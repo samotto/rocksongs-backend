@@ -4,6 +4,11 @@ from app.models import Song
 from app.schemas import SongCreate, SongUpdate
 
 
+def _escape_like(value: str) -> str:
+    """Escape LIKE wildcard characters to prevent unintended wildcard matching."""
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def get_song(db: Session, song_id: int) -> Song | None:
     return db.query(Song).filter(Song.id == song_id).first()
 
@@ -17,9 +22,9 @@ def get_songs(
 ) -> list[Song]:
     query = db.query(Song)
     if artist:
-        query = query.filter(Song.artist.ilike(f"%{artist}%"))
+        query = query.filter(Song.artist.ilike(f"%{_escape_like(artist)}%", escape="\\"))
     if genre:
-        query = query.filter(Song.genre.ilike(f"%{genre}%"))
+        query = query.filter(Song.genre.ilike(f"%{_escape_like(genre)}%", escape="\\"))
     return query.offset(skip).limit(limit).all()
 
 
