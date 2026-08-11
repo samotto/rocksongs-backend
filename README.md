@@ -65,7 +65,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/rocksongs
 JWT_SECRET_KEY=change-me-now
 JWT_ALGORITHM=HS256
 JWT_EXPIRE_MINUTES=120
-FRONTEND_ORIGIN=http://localhost:5173
+FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 COOKIE_SECURE=false
 COOKIE_SAMESITE=lax
 SEED_ADMIN_EMAIL=admin@example.com
@@ -75,7 +75,7 @@ SEED_ADMIN_PASSWORD=changeme
 Production (Railway) example values:
 
 ```env
-FRONTEND_ORIGIN=https://your-github-pages-url
+FRONTEND_ORIGINS=https://samotto.github.io
 COOKIE_SECURE=true
 COOKIE_SAMESITE=none
 ```
@@ -183,13 +183,13 @@ python -c "from app.auth import hash_password; print(hash_password('your-passwor
 Insert user with SQL (example):
 
 ```sql
-INSERT INTO users (email, super_user, password_hash, create_time)
-VALUES ('user@example.com', false, 'PASTE_HASH_HERE', now());
+INSERT INTO users (name, email, super_user, password_hash, create_time)
+VALUES ('Example User', 'user@example.com', false, 'PASTE_HASH_HERE', now());
 ```
 
 ## CORS and Frontend Integration
 
-CORS allows one origin defined by `FRONTEND_ORIGIN` and supports credentials.
+CORS allows the comma-separated origins defined by `FRONTEND_ORIGINS` and supports credentials.
 
 Frontend requests must include credentials so browser sends auth cookie.
 
@@ -203,7 +203,7 @@ fetch('https://your-backend-url/songs', {
 ```
 
 For `rocksongs-frontend` on GitHub Pages:
-- Set `FRONTEND_ORIGIN` to exact GitHub Pages URL
+- Set `FRONTEND_ORIGINS` to the exact GitHub Pages URL (plus any additional allowed origins)
 - Keep `allow_credentials=true` (already configured)
 
 ## Backup and Restore
@@ -257,7 +257,7 @@ Set at least:
 - `JWT_SECRET_KEY`
 - `JWT_ALGORITHM=HS256`
 - `JWT_EXPIRE_MINUTES=120`
-- `FRONTEND_ORIGIN=https://your-github-pages-url`
+- `FRONTEND_ORIGINS=https://samotto.github.io`
 - `COOKIE_SECURE=true`
 - `COOKIE_SAMESITE=none`
 - `SEED_ADMIN_EMAIL`
@@ -268,15 +268,16 @@ Set at least:
 `Procfile` is included:
 
 ```text
-web: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+web: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-### 6) Run migrations and seed after first deploy
+The start command applies pending migrations automatically on every deployment.
+
+### 6) Seed after first deploy
 
 From Railway service shell (or one-off command):
 
 ```bash
-alembic upgrade head
 python -m app.seed
 ```
 

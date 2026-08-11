@@ -8,11 +8,15 @@ class Settings(BaseSettings):
     jwt_secret_key: str = "change-me"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 120
-    frontend_origin: str = "http://localhost:5173"
+    frontend_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
     seed_admin_email: str = "admin@example.com"
     seed_admin_password: str = "changeme"
+
+    @property
+    def allowed_frontend_origins(self) -> list[str]:
+        return [origin.strip().rstrip("/") for origin in self.frontend_origins.split(",") if origin.strip()]
 
     model_config = SettingsConfigDict(
         env_file=".env",

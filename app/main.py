@@ -11,14 +11,9 @@ from app.schemas import HealthResponse
 settings = get_settings()
 app = FastAPI(title="RockSongs Backend")
 
-allowed_origins = [settings.frontend_origin]
-if not settings.cookie_secure:
-    allowed_origins.extend(["http://127.0.0.1:5173", "http://localhost:5173"])
-allowed_origins = list(dict.fromkeys(allowed_origins))
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
+    allow_origins=settings.allowed_frontend_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
