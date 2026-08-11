@@ -12,8 +12,16 @@ from app.schemas import MessageResponse, SongCreate, SongResponse, SongUpdate
 router = APIRouter(tags=["songs"])
 
 
+def require_super_user(user: User) -> None:
+    if not user.super_user:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super-user access required")
+
+
 @router.get("/songs", response_model=list[SongResponse])
-def list_songs(db: Session = Depends(get_db)) -> list[SongResponse]:
+def list_songs(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[SongResponse]:
     songs = db.query(Song).order_by(Song.artist.asc(), Song.song.asc()).all()
     return [SongResponse.model_validate(song) for song in songs]
 
@@ -50,6 +58,7 @@ def update_song(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SongResponse:
+    require_super_user(current_user)
     song = db.query(Song).filter(Song.id == song_id).first()
     if not song:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Song not found")
@@ -72,8 +81,9 @@ def update_song(
 def delete_song(
     song_id: int,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ) -> MessageResponse:
+    require_super_user(current_user)
     song = db.query(Song).filter(Song.id == song_id).first()
     if not song:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Song not found")

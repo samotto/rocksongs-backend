@@ -25,6 +25,7 @@ def ensure_admin_user(db: Session) -> User:
         return admin
 
     admin = User(
+        name="Sam Otto" if settings.seed_admin_email == "sam@overturegroup.com" else settings.seed_admin_email.split("@", 1)[0],
         email=settings.seed_admin_email,
         super_user=True,
         password_hash=hash_password(settings.seed_admin_password),

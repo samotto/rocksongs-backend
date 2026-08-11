@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class HealthResponse(BaseModel):
@@ -12,8 +12,15 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=72)
+
+
 class UserLoginResponse(BaseModel):
     id: int
+    name: str
     email: EmailStr
     super_user: bool
 
@@ -22,9 +29,39 @@ class UserLoginResponse(BaseModel):
 
 class UserMeResponse(BaseModel):
     id: int
+    name: str
     email: EmailStr
+    super_user: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class UserCreate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=72)
+    super_user: bool = False
+
+
+class UserUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
+    super_user: bool
+
+
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    super_user: bool
+    create_time: datetime
+    last_logon_time: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PasswordResetRequest(BaseModel):
+    new_password: str = Field(min_length=8, max_length=72)
 
 
 class SongBase(BaseModel):

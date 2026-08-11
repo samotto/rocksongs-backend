@@ -10,6 +10,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
     super_user: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
