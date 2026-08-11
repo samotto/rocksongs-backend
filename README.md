@@ -68,8 +68,12 @@ JWT_EXPIRE_MINUTES=120
 FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 COOKIE_SECURE=false
 COOKIE_SAMESITE=lax
-SEED_ADMIN_EMAIL=admin@example.com
-SEED_ADMIN_PASSWORD=changeme
+SEED_ADMIN_EMAIL=sam@overturegroup.com
+SEED_ADMIN_PASSWORD=abc
+RESEND_API_KEY=
+EMAIL_FROM=Rock Songs <onboarding@resend.dev>
+FRONTEND_URL=http://localhost:5173
+EMAIL_VERIFICATION_MINUTES=60
 ```
 
 Production (Railway) example values:
@@ -95,20 +99,26 @@ Returns:
 ### Authentication
 
 - `POST /auth/login`
+- `POST /auth/register`
+- `POST /auth/verify-email`
+- `POST /auth/resend-verification`
 - `POST /auth/logout`
 - `GET /auth/me`
 
 Notes:
 - Login sets an HttpOnly JWT cookie named `access_token`.
+- Registration leaves `last_logon_time` empty and sends a signed, expiring email-verification link through Resend.
+- Email verification sets `last_logon_time` and automatically logs the user in.
+- Pending users cannot log in until their email address is verified.
 - Logout clears that cookie.
 - `GET /auth/me` returns 401 when not authenticated.
 
 ### Songs
 
-- `GET /songs` (public)
-- `POST /songs` (authenticated)
-- `PUT /songs/{song_id}` (authenticated)
-- `DELETE /songs/{song_id}` (authenticated)
+- `GET /songs` (authenticated)
+- `POST /songs` (super user)
+- `PUT /songs/{song_id}` (super user)
+- `DELETE /songs/{song_id}` (super user)
 
 Important:
 - There is currently no `GET /songs/{id}` endpoint.
@@ -166,13 +176,11 @@ Or:
 ```
 
 Seed behavior:
-- Creates default admin user if missing (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`)
+- Creates the default admin if missing; if that email already belongs to a basic user, promotes it and establishes the seed password (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`)
 - Loads songs from `data/seed_songs.json`
 - Skips duplicate songs by `artist + song`
 
-## Manual User Management (No Public Registration Yet)
-
-Users are manually managed for now.
+## Manual User Management
 
 Generate a password hash:
 
@@ -262,16 +270,20 @@ Set at least:
 - `COOKIE_SAMESITE=none`
 - `SEED_ADMIN_EMAIL`
 - `SEED_ADMIN_PASSWORD`
+- `RESEND_API_KEY`
+- `EMAIL_FROM=Rock Songs <noreply@mail.overturegroup.com>`
+- `FRONTEND_URL=http://localhost:5173` (use the public frontend URL in production)
+- `EMAIL_VERIFICATION_MINUTES=60`
 
 ### 5) Railway run command
 
 `Procfile` is included:
 
 ```text
-web: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+web: alembic upgrade head && python -m app.seed && uvicorn app.main:app --host 0.0.0.0 --port $PORT
 ```
 
-The start command applies pending migrations automatically on every deployment.
+The start command applies pending migrations and idempotent seed data automatically on every deployment.
 
 ### 6) Seed after first deploy
 

@@ -11,8 +11,13 @@ class Settings(BaseSettings):
     frontend_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     cookie_secure: bool = False
     cookie_samesite: str = "lax"
-    seed_admin_email: str = "admin@example.com"
-    seed_admin_password: str = "changeme"
+    seed_admin_email: str = "sam@overturegroup.com"
+    seed_admin_password: str = "abc"
+    seed_admin_force_password_reset: bool = False
+    resend_api_key: str = ""
+    email_from: str = "Rock Songs <onboarding@resend.dev>"
+    frontend_url: str = "http://localhost:5173"
+    email_verification_minutes: int = 60
 
     @property
     def allowed_frontend_origins(self) -> list[str]:

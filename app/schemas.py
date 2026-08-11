@@ -18,6 +18,19 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8, max_length=72)
 
 
+class RegistrationResponse(BaseModel):
+    message: str
+    email: EmailStr
+
+
+class EmailVerificationRequest(BaseModel):
+    token: str = Field(min_length=1)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class UserLoginResponse(BaseModel):
     id: int
     name: str

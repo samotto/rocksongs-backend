@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user, hash_password
 from app.database import get_db
-from app.models import User
+from app.models import Song, User
 from app.schemas import MessageResponse, PasswordResetRequest, UserCreate, UserResponse, UserUpdate
 
 
@@ -84,6 +84,32 @@ def update_user(
     db.commit()
     db.refresh(user)
     return UserResponse.model_validate(user)
+
+
+@router.delete("/{user_id}", response_model=MessageResponse)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> MessageResponse:
+    require_super_user(current_user)
+    if current_user.id == user_id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You cannot delete your own account")
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    # Keep the song audit foreign keys valid after the user is removed.
+    db.query(Song).filter(Song.create_id == user_id).update(
+        {Song.create_id: current_user.id}, synchronize_session=False
+    )
+    db.query(Song).filter(Song.update_id == user_id).update(
+        {Song.update_id: current_user.id}, synchronize_session=False
+    )
+    db.delete(user)
+    db.commit()
+    return MessageResponse(message="user deleted")
 
 
 @router.post("/{user_id}/reset-password", response_model=MessageResponse)

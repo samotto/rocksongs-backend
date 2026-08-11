@@ -33,6 +33,7 @@ def create_song(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SongResponse:
+    require_super_user(current_user)
     now = datetime.now(timezone.utc)
     song = Song(
         artist=payload.artist,

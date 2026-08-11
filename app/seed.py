@@ -2,6 +2,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.auth import hash_password
@@ -20,17 +21,32 @@ def load_seed_data() -> list[dict]:
 
 
 def ensure_admin_user(db: Session) -> User:
-    admin = db.query(User).filter(User.email == settings.seed_admin_email).first()
+    admin_email = settings.seed_admin_email.strip().lower()
+    admin = db.query(User).filter(func.lower(User.email) == admin_email).first()
     if admin:
+        # If the seed address was registered before initial seeding, promote it
+        # and establish the seed password once. Later password changes survive
+        # normal application restarts because an existing admin is left alone.
+        needs_promotion = not admin.super_user
+        if needs_promotion:
+            admin.super_user = True
+        if needs_promotion or settings.seed_admin_force_password_reset:
+            admin.password_hash = hash_password(settings.seed_admin_password)
+        if admin.last_logon_time is None:
+            admin.last_logon_time = datetime.now(timezone.utc)
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
         return admin
 
     admin = User(
-        name="Sam Otto" if settings.seed_admin_email == "sam@overturegroup.com" else settings.seed_admin_email.split("@", 1)[0],
-        email=settings.seed_admin_email,
+        name="Sam Otto" if admin_email == "sam@overturegroup.com" else admin_email.split("@", 1)[0],
+        email=admin_email,
         super_user=True,
         password_hash=hash_password(settings.seed_admin_password),
         google_id=None,
         create_time=datetime.now(timezone.utc),
+        last_logon_time=datetime.now(timezone.utc),
     )
     db.add(admin)
     db.commit()
