@@ -96,6 +96,9 @@ Returns:
 {"status": "ok"}
 ```
 
+The health check selects one `id` from the `users` table before returning. If
+PostgreSQL or the table is unavailable, the endpoint returns a server error.
+
 ### Authentication
 
 - `POST /auth/login`
