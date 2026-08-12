@@ -79,10 +79,17 @@ EMAIL_VERIFICATION_MINUTES=60
 Production (Railway) example values:
 
 ```env
-FRONTEND_ORIGINS=https://samotto.github.io
+FRONTEND_ORIGINS=https://rocksongs.example.com,http://localhost:5173,http://127.0.0.1:5173
+FRONTEND_URL=https://rocksongs.example.com
 COOKIE_SECURE=true
-COOKIE_SAMESITE=none
+COOKIE_SAMESITE=lax
 ```
+
+For Safari-compatible cookie authentication, host the frontend and API beneath
+the same registrable domain, for example `rocksongs.example.com` and
+`api-rocksongs.example.com`. When reusing this backend, the production hostname,
+CORS allowlist, verification-link URL, and cookie behavior are configured only
+through these environment variables; application code does not need to change.
 
 ## API Endpoints
 
