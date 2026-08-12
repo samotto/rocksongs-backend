@@ -1,6 +1,11 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+UserRole = Literal["Admin", "Basic", "Pending"]
+ManagedUserRole = Literal["Admin", "Basic"]
 
 
 class HealthResponse(BaseModel):
@@ -35,7 +40,7 @@ class UserLoginResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
-    super_user: bool
+    role: UserRole
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,7 +49,7 @@ class UserMeResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
-    super_user: bool
+    role: UserRole
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,20 +58,25 @@ class UserCreate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     email: EmailStr
     password: str = Field(min_length=8, max_length=72)
-    super_user: bool = False
+    role: ManagedUserRole = "Basic"
 
 
 class UserUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     email: EmailStr
-    super_user: bool
+    role: UserRole
+
+
+class UserProfileUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: EmailStr
 
 
 class UserResponse(BaseModel):
     id: int
     name: str
     email: EmailStr
-    super_user: bool
+    role: UserRole
     create_time: datetime
     last_logon_time: datetime | None
 

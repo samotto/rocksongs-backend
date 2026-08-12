@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
@@ -8,11 +8,14 @@ from app.database import Base
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("role IN ('Admin', 'Basic', 'Pending')", name="ck_users_role"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False, index=True)
-    super_user: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    role: Mapped[str] = mapped_column(Text, nullable=False, default="Basic", server_default="Basic")
     password_hash: Mapped[str | None] = mapped_column(Text, nullable=True)
     google_id: Mapped[str | None] = mapped_column(Text, nullable=True)
     create_time: Mapped[datetime] = mapped_column(

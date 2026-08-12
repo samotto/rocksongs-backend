@@ -4,8 +4,8 @@ RockSongs Backend is a beginner-friendly FastAPI service for managing a shared r
 
 It provides:
 - JWT cookie authentication (`/auth/login`, `/auth/logout`, `/auth/me`)
-- Public read access to all songs (`GET /songs`)
-- Auth-protected create/update/delete for songs
+- Authenticated read access to all songs (`GET /songs`)
+- Admin-only create/update/delete for songs
 - PostgreSQL + SQLAlchemy models
 - Alembic migrations
 - Seed utilities
@@ -107,18 +107,19 @@ Returns:
 
 Notes:
 - Login sets an HttpOnly JWT cookie named `access_token`.
-- Registration leaves `last_logon_time` empty and sends a signed, expiring email-verification link through Resend.
-- Email verification sets `last_logon_time` and automatically logs the user in.
-- Pending users cannot log in until their email address is verified.
+- Registration creates the user with role `Pending` and sends a signed, expiring email-verification link through Resend.
+- Email verification changes the role from `Pending` to `Basic`, records the login time, and automatically logs the user in.
+- Users with the `Pending` role cannot log in until their email address is verified.
+- Supported roles are `Admin`, `Basic`, and `Pending`.
 - Logout clears that cookie.
 - `GET /auth/me` returns 401 when not authenticated.
 
 ### Songs
 
 - `GET /songs` (authenticated)
-- `POST /songs` (super user)
-- `PUT /songs/{song_id}` (super user)
-- `DELETE /songs/{song_id}` (super user)
+- `POST /songs` (Admin)
+- `PUT /songs/{song_id}` (Admin)
+- `DELETE /songs/{song_id}` (Admin)
 
 Important:
 - There is currently no `GET /songs/{id}` endpoint.
@@ -176,7 +177,7 @@ Or:
 ```
 
 Seed behavior:
-- Creates the default admin if missing; if that email already belongs to a basic user, promotes it and establishes the seed password (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`)
+- Creates the default Admin if missing; if that email has another role, promotes it and establishes the seed password (`SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`)
 - Loads songs from `data/seed_songs.json`
 - Skips duplicate songs by `artist + song`
 
@@ -191,8 +192,8 @@ python -c "from app.auth import hash_password; print(hash_password('your-passwor
 Insert user with SQL (example):
 
 ```sql
-INSERT INTO users (name, email, super_user, password_hash, create_time)
-VALUES ('Example User', 'user@example.com', false, 'PASTE_HASH_HERE', now());
+INSERT INTO users (name, email, role, password_hash, create_time)
+VALUES ('Example User', 'user@example.com', 'Basic', 'PASTE_HASH_HERE', now());
 ```
 
 ## CORS and Frontend Integration

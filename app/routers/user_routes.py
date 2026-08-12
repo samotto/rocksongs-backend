@@ -7,15 +7,23 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user, hash_password
 from app.database import get_db
 from app.models import Song, User
-from app.schemas import MessageResponse, PasswordResetRequest, UserCreate, UserResponse, UserUpdate
+from app.schemas import (
+    MessageResponse,
+    PasswordResetRequest,
+    UserCreate,
+    UserMeResponse,
+    UserProfileUpdate,
+    UserResponse,
+    UserUpdate,
+)
 
 
 router = APIRouter(prefix="/users", tags=["users"])
 
 
-def require_super_user(user: User) -> None:
-    if not user.super_user:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Super-user access required")
+def require_admin(user: User) -> None:
+    if user.role != "Admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
 
 
 @router.get("", response_model=list[UserResponse])
@@ -23,7 +31,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[UserResponse]:
-    require_super_user(current_user)
+    require_admin(current_user)
     users = db.query(User).order_by(User.email.asc()).all()
     return [UserResponse.model_validate(user) for user in users]
 
@@ -34,7 +42,7 @@ def create_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    require_super_user(current_user)
+    require_admin(current_user)
 
     email = str(payload.email).strip().lower()
     name = (payload.name or email.split("@", 1)[0]).strip()
@@ -46,7 +54,7 @@ def create_user(
     user = User(
         name=name,
         email=email,
-        super_user=payload.super_user,
+        role=payload.role,
         password_hash=hash_password(payload.password),
         create_time=datetime.now(timezone.utc),
     )
@@ -56,6 +64,37 @@ def create_user(
     return UserResponse.model_validate(user)
 
 
+@router.put("/me", response_model=UserMeResponse)
+def update_current_user(
+    payload: UserProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserMeResponse:
+    email = str(payload.email).strip().lower()
+    name = payload.name.strip()
+    duplicate_email = (
+        db.query(User)
+        .filter(func.lower(User.email) == email.lower(), User.id != current_user.id)
+        .first()
+    )
+    if duplicate_email:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user with this email already exists")
+    duplicate_name = (
+        db.query(User)
+        .filter(func.lower(User.name) == name.lower(), User.id != current_user.id)
+        .first()
+    )
+    if duplicate_name:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user with this name already exists")
+
+    current_user.name = name
+    current_user.email = email
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return UserMeResponse.model_validate(current_user)
+
+
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(
     user_id: int,
@@ -63,7 +102,7 @@ def update_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> UserResponse:
-    require_super_user(current_user)
+    require_admin(current_user)
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -79,7 +118,7 @@ def update_user(
 
     user.name = name
     user.email = email
-    user.super_user = payload.super_user
+    user.role = payload.role
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -92,7 +131,7 @@ def delete_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MessageResponse:
-    require_super_user(current_user)
+    require_admin(current_user)
     if current_user.id == user_id:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You cannot delete your own account")
 
@@ -119,7 +158,7 @@ def reset_password(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> MessageResponse:
-    if current_user.id != user_id and not current_user.super_user:
+    if current_user.id != user_id and current_user.role != "Admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You cannot reset this user's password")
 
     user = db.query(User).filter(User.id == user_id).first()

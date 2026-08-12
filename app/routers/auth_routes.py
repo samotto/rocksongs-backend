@@ -51,7 +51,7 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
     user = db.query(User).filter(func.lower(User.email) == email).first()
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
-    if user.last_logon_time is None:
+    if user.role == "Pending":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Email address has not been verified")
 
     user.last_logon_time = datetime.now(timezone.utc)
@@ -76,7 +76,7 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registr
     user = User(
         name=name,
         email=email,
-        super_user=False,
+        role="Pending",
         password_hash=hash_password(payload.password),
         create_time=datetime.now(timezone.utc),
         last_logon_time=None,
@@ -105,9 +105,10 @@ def verify_email(
     user = db.query(User).filter(User.id == user_id).first()
     if not user or user.email.strip().lower() != token_email:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="The verification link is invalid")
-    if user.last_logon_time is not None:
+    if user.role != "Pending":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This email address is already verified")
 
+    user.role = "Basic"
     user.last_logon_time = datetime.now(timezone.utc)
     db.add(user)
     db.commit()
@@ -123,7 +124,7 @@ def resend_verification(
 ) -> MessageResponse:
     email = str(payload.email).strip().lower()
     user = db.query(User).filter(func.lower(User.email) == email).first()
-    if user and user.last_logon_time is None:
+    if user and user.role == "Pending":
         token = create_email_verification_token(user.id, user.email)
         try:
             send_verification_email(user.email, token)

@@ -27,9 +27,9 @@ def ensure_admin_user(db: Session) -> User:
         # If the seed address was registered before initial seeding, promote it
         # and establish the seed password once. Later password changes survive
         # normal application restarts because an existing admin is left alone.
-        needs_promotion = not admin.super_user
+        needs_promotion = admin.role != "Admin"
         if needs_promotion:
-            admin.super_user = True
+            admin.role = "Admin"
         if needs_promotion or settings.seed_admin_force_password_reset:
             admin.password_hash = hash_password(settings.seed_admin_password)
         if admin.last_logon_time is None:
@@ -42,7 +42,7 @@ def ensure_admin_user(db: Session) -> User:
     admin = User(
         name="Sam Otto" if admin_email == "sam@overturegroup.com" else admin_email.split("@", 1)[0],
         email=admin_email,
-        super_user=True,
+        role="Admin",
         password_hash=hash_password(settings.seed_admin_password),
         google_id=None,
         create_time=datetime.now(timezone.utc),
