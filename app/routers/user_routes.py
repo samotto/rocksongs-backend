@@ -51,12 +51,16 @@ def create_user(
     if db.query(User).filter(func.lower(User.name) == name.lower()).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="A user with this name already exists")
 
+    now = datetime.now(timezone.utc)
     user = User(
         name=name,
         email=email,
         role=payload.role,
         password_hash=hash_password(payload.password),
-        create_time=datetime.now(timezone.utc),
+        create_time=now,
+        update_time=now,
+        create_id=current_user.id,
+        update_id=current_user.id,
     )
     db.add(user)
     db.commit()
@@ -89,6 +93,8 @@ def update_current_user(
 
     current_user.name = name
     current_user.email = email
+    current_user.update_time = datetime.now(timezone.utc)
+    current_user.update_id = current_user.id
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
@@ -119,6 +125,8 @@ def update_user(
     user.name = name
     user.email = email
     user.role = payload.role
+    user.update_time = datetime.now(timezone.utc)
+    user.update_id = current_user.id
     db.add(user)
     db.commit()
     db.refresh(user)
@@ -158,6 +166,12 @@ def delete_user(
     db.query(LookupListItem).filter(LookupListItem.update_id == user_id).update(
         {LookupListItem.update_id: current_user.id}, synchronize_session=False
     )
+    db.query(User).filter(User.create_id == user_id).update(
+        {User.create_id: current_user.id}, synchronize_session=False
+    )
+    db.query(User).filter(User.update_id == user_id).update(
+        {User.update_id: current_user.id}, synchronize_session=False
+    )
     db.delete(user)
     db.commit()
     return MessageResponse(message="user deleted")
@@ -178,6 +192,8 @@ def reset_password(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
 
     user.password_hash = hash_password(payload.new_password)
+    user.update_time = datetime.now(timezone.utc)
+    user.update_id = current_user.id
     db.add(user)
     db.commit()
     return MessageResponse(message="password updated")

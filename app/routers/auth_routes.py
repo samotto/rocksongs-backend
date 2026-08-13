@@ -73,15 +73,20 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)) -> Registr
     if db.query(User).filter(func.lower(User.name) == name.lower()).first():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="An account with this name already exists")
 
+    now = datetime.now(timezone.utc)
     user = User(
         name=name,
         email=email,
         role="Pending",
         password_hash=hash_password(payload.password),
-        create_time=datetime.now(timezone.utc),
+        create_time=now,
+        update_time=now,
         last_logon_time=None,
     )
     db.add(user)
+    db.flush()
+    user.create_id = user.id
+    user.update_id = user.id
     db.commit()
     db.refresh(user)
     token = create_email_verification_token(user.id, user.email)
@@ -110,6 +115,8 @@ def verify_email(
 
     user.role = "Basic"
     user.last_logon_time = datetime.now(timezone.utc)
+    user.update_time = user.last_logon_time
+    user.update_id = user.id
     db.add(user)
     db.commit()
     db.refresh(user)

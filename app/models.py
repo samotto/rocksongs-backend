@@ -23,6 +23,17 @@ class User(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
+    update_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    create_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    update_id: Mapped[int | None] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     last_logon_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 

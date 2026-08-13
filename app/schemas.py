@@ -79,6 +79,9 @@ class UserResponse(BaseModel):
     email: EmailStr
     role: UserRole
     create_time: datetime
+    update_time: datetime | None
+    create_id: int | None
+    update_id: int | None
     last_logon_time: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
@@ -177,3 +180,23 @@ class LookupListValuesResponse(BaseModel):
     sort_mode: LookupSortMode
     default_item_value: str | None
     items: list[LookupListItemResponse]
+
+
+class AuditEntryResponse(BaseModel):
+    activity_time: datetime
+    user_id: int | None
+    user_name: str
+    user_email: str
+    table_name: str
+    record_id: str
+    activity: Literal["Created", "Updated"]
+
+
+class AuditSearchResponse(BaseModel):
+    date: str
+    timezone: str
+    page: int
+    page_size: int
+    total: int
+    total_pages: int
+    items: list[AuditEntryResponse]

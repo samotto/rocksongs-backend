@@ -165,6 +165,9 @@ For a new application, change the seed email and password through environment va
 | `password_hash` | text | Yes | bcrypt hash; nullable for a future external-login account |
 | `google_id` | text | Yes | Reserved for future Google OAuth; OAuth is not implemented |
 | `create_time` | timestamp with timezone | No | UTC account creation time |
+| `update_time` | timestamp with timezone | Yes | UTC last profile, role, verification, or password update time |
+| `create_id` | integer | Yes | Self-referencing user who created the account |
+| `update_id` | integer | Yes | Self-referencing user who last updated the account |
 | `last_logon_time` | timestamp with timezone | Yes | UTC audit timestamp; not verification state |
 
 ### `songs` — APPLICATION-SPECIFIC
@@ -191,7 +194,7 @@ If a user is deleted, song audit references owned by that user are reassigned to
 - Add a new Alembic revision for every schema change.
 - Update SQLAlchemy models and Pydantic schemas with the migration.
 - Test both a clean database upgrade and an upgrade from the current revision.
-- Current migration chain is `0001_create_users_and_songs` → `0002_add_user_name` → `0003_user_roles`.
+- Current migration chain is `0001_create_users_and_songs` → `0002_add_user_name` → `0003_user_roles` → `0004_lookup_lists` → `0005_lookup_defaults` → `0006_user_audit`.
 - For a genuinely new product with a new database, it is acceptable to replace the history with a clean initial migration before the first deployment. Do not do that to the existing RockSongs database.
 
 ## API Contract
@@ -354,6 +357,7 @@ Backend settings are environment variables defined by `app/config.py` and illust
 | `EMAIL_FROM` | Verified sender name/address |
 | `FRONTEND_URL` | Base used in verification links |
 | `EMAIL_VERIFICATION_MINUTES` | Verification token lifetime |
+| `APP_TIMEZONE` | IANA timezone used to convert an audit calendar date into its exact 24-hour search window |
 
 Settings are cached per process. Restart the backend after changing environment values.
 
@@ -519,7 +523,20 @@ Static dropdown choices are part of the reusable foundation, not the Rock Songs-
 - DELETE operations soft-deactivate lists and values so historical references remain valid. PUT can reactivate them. A default value cannot be deactivated until the list default is changed or cleared.
 - GET /lookup-lists/{list_name} is authenticated and returns the list default plus only active values in backend-defined order.
 - Admin CRUD is under /admin/lookup-lists, including nested /{list_id}/items endpoints.
-- The Admin-only header icon opens an Administration hub with Users and Lists.
+- The Admin-only header icon opens an Administration hub with Users, Lists, and Audit.
 - Lists and list values have separate administration pages. Lists are defined by application code: the frontend intentionally does not expose New List or Deactivate List controls, although the backend endpoints remain available. The List edit modal provides an active-value dropdown for selecting or clearing the default. List values retain create/edit/deactivate controls.
 - populateLookupSelect in frontend/js/app.js is the generic dropdown loader. It uses backend ordering, caches values, applies the list default when there is no explicit selection, and retains an existing inactive selection.
 - Local frontend testing against Railway uses python3 dev_server.py --port 5173 and http://localhost:5173/?api=proxy. This frontend-only proxy preserves secure production cookie settings; FastAPI and PostgreSQL remain on Railway.
+
+## Lightweight Audit Search
+
+- The Audit administration page searches current rows in `users`, `songs`, `lookup_lists`, and `lookup_list_items`; it does not create a separate history table or add audit-log writes.
+- The required date represents one calendar day in `APP_TIMEZONE` (default `America/Chicago`). The backend converts that local-day boundary to UTC before querying.
+- Optional filters are acting user name, acting user email, and table. Name/email matching is case-insensitive and partial.
+- `DBTables` is an Alphabetical lookup list whose active values control which supported tables are queried. Its four initial values and display texts are the exact table names.
+- A fixed backend mapping is the security boundary for table selection. Never interpolate lookup values or request parameters as raw SQL identifiers.
+- The backend runs one bounded query per enabled table, combines the current rows in Python, sorts by activity time descending, and returns 100 entries per page.
+- Results contain activity time, acting user, table, primary-key text, and `Created` or `Updated`. `lookup_list_items` uses `list_id / list_item_value` as its record key.
+- `users` has the same create/update audit pattern as the other tables. Signup self-assigns its audit ids after insertion; administrator-created users reference that Admin.
+- Hard-deleted rows do not appear because this deliberately lightweight design queries current tables only. Soft deactivation remains visible as an update.
+- `GET /admin/audit` is Admin-only and requires `date`; it accepts optional `user_name`, `user_email`, `table_name`, and `page` parameters.

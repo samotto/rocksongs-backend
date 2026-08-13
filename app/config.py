@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     email_from: str = "Rock Songs <onboarding@resend.dev>"
     frontend_url: str = "http://localhost:5173"
     email_verification_minutes: int = 60
+    app_timezone: str = "America/Chicago"
 
     @property
     def allowed_frontend_origins(self) -> list[str]:
