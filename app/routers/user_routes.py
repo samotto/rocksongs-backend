@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user, hash_password
 from app.database import get_db
-from app.models import Song, User
+from app.models import LookupList, LookupListItem, Song, User
 from app.schemas import (
     MessageResponse,
     PasswordResetRequest,
@@ -145,6 +145,18 @@ def delete_user(
     )
     db.query(Song).filter(Song.update_id == user_id).update(
         {Song.update_id: current_user.id}, synchronize_session=False
+    )
+    db.query(LookupList).filter(LookupList.create_id == user_id).update(
+        {LookupList.create_id: current_user.id}, synchronize_session=False
+    )
+    db.query(LookupList).filter(LookupList.update_id == user_id).update(
+        {LookupList.update_id: current_user.id}, synchronize_session=False
+    )
+    db.query(LookupListItem).filter(LookupListItem.create_id == user_id).update(
+        {LookupListItem.create_id: current_user.id}, synchronize_session=False
+    )
+    db.query(LookupListItem).filter(LookupListItem.update_id == user_id).update(
+        {LookupListItem.update_id: current_user.id}, synchronize_session=False
     )
     db.delete(user)
     db.commit()

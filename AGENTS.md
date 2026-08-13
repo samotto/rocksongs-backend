@@ -506,3 +506,20 @@ A new app is not complete until:
 - CORS, cookie settings, frontend API URL, verification URL, DNS, and HTTPS agree.
 - The application works on desktop Chrome and iPhone Safari.
 - Both child repositories are clean, committed, and deployed from the intended branches.
+
+## Reusable Lookup Lists
+
+Static dropdown choices are part of the reusable foundation, not the Rock Songs-specific catalog.
+
+- lookup_lists stores id, unique list_name, optional description, Alphabetical or Sequence sort_mode, optional default_item_value, active, and audit columns. The default uses a composite foreign key to an item belonging to the same list.
+- lookup_list_items has the composite primary key (list_id, list_item_value), plus list_item_text, optional non-negative sequence, active, and audit columns. It has no separate item id.
+- Migration 0004_lookup_lists creates both tables. Migration 0005_lookup_defaults adds default_item_value and permits sequence zero.
+- The idempotent seed creates the Alphabetical Role list with Admin, Basic, and Pending, sets Basic as its default, and sets every Role sequence to 0. Stored values and visible text use the full capitalized names.
+- Primary-key item values are immutable. Edit changes text, sequence, or active status.
+- DELETE operations soft-deactivate lists and values so historical references remain valid. PUT can reactivate them. A default value cannot be deactivated until the list default is changed or cleared.
+- GET /lookup-lists/{list_name} is authenticated and returns the list default plus only active values in backend-defined order.
+- Admin CRUD is under /admin/lookup-lists, including nested /{list_id}/items endpoints.
+- The Admin-only header icon opens an Administration hub with Users and Lists.
+- Lists and list values have separate administration pages. Lists are defined by application code: the frontend intentionally does not expose New List or Deactivate List controls, although the backend endpoints remain available. The List edit modal provides an active-value dropdown for selecting or clearing the default. List values retain create/edit/deactivate controls.
+- populateLookupSelect in frontend/js/app.js is the generic dropdown loader. It uses backend ordering, caches values, applies the list default when there is no explicit selection, and retains an existing inactive selection.
+- Local frontend testing against Railway uses python3 dev_server.py --port 5173 and http://localhost:5173/?api=proxy. This frontend-only proxy preserves secure production cookie settings; FastAPI and PostgreSQL remain on Railway.
